@@ -7,8 +7,8 @@
 #define FSIZE(A) A*sizeof(float)
 #define LENGTH 8
 
-// multiply the elements in matrix M by the correct element in vector V and store the result in matrix R
-__global__ void MatrixMul(float* V, float* R, int* addr, int N) {
+// Test the new SST instruction's functionality
+__global__ void SSTTest(float* V, float* R, int* addr, int N) {
 	int i = threadIdx.x;
 	if (i < N) {
 		volatile int return_val = 0;
@@ -37,7 +37,6 @@ __global__ void MatrixMul(float* V, float* R, int* addr, int N) {
 	}
 }
 
-// random sparse matrix times a random dense vector
 int main(int argc, char** argv) {
 	float *h_vector = (float*)calloc(LENGTH, FSIZE(1));
 	float *h_result = (float*)malloc(FSIZE(LENGTH));
@@ -56,7 +55,7 @@ int main(int argc, char** argv) {
 
 	cudaMemcpy(d_vector, h_vector, FSIZE(LENGTH), cudaMemcpyHostToDevice);
 
-	MatrixMul<<<1, LENGTH>>>(d_vector, d_result, d_addr, LENGTH);
+	SSTTest<<<1, LENGTH>>>(d_vector, d_result, d_addr, LENGTH);
 	
 	cudaMemcpy(h_vector, d_vector, FSIZE(LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_result, d_result, FSIZE(LENGTH), cudaMemcpyDeviceToHost);
