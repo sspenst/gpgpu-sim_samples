@@ -15,26 +15,16 @@ __global__ void SSTTest(float* V, float* R, int* addr, int N) {
 		float element = V[i];
 		asm("/*");
 		asm("CPTX_BEGIN");
-		
-		/*__shared__ float S[8];
-		int ir = N-i-1;
-		S[i] = V[i];
-		__syncthreads();
-		R[i] = S[ir];*/
-
+		// these two instructions seem to be necessary to initialize the sstarr memory
+		// is it possible to do these within sst_impl?
 		asm(".sstarr .align 4 .b8 _Z9MatrixMulPfS_Pii__sst_var[32];"); // initialize sst_array
 		asm("mov.u64 %rd10, _Z9MatrixMulPfS_Pii__sst_var;"); // rd10 = sst_array
-		asm("add.s64 %rd11, %rd10, %rd9;"); // sst_array[i]
-		asm("sst.sstarr.f32 %r3, [%rd11], %r1, %f1;"); // store element in sst_array[i]
-		__syncthreads();
-		volatile int ir = N-i-1;
-		asm("mul.wide.s32 %rd12, %r5, 4;"); // ir*4
-		asm("add.s64 %rd13, %rd10, %rd12;"); // sst_array[ir]
-		asm("ld.sstarr.f32 %f1, [%rd13];"); // load from sst_array[ir] (replace element)
-		R[i] = element;
-		
+		// perform SST instruction
+		asm("sst.sstarr.f32 %r3, [%rd6], %r1, %f1;");
 		asm("CPTX_END");
 		asm("*/");
+		__syncthreads();
+		R[i] = element;
 		if (return_val != 0) *addr = return_val;
 	}
 }
