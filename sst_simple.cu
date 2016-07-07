@@ -21,6 +21,7 @@ __global__ void SSTTest(float* V, float* R, int* addr, int N) {
 		asm("mov.u64 %rd10, _Z9MatrixMulPfS_Pii__sst_var;"); // rd10 = sst_array
 		// perform SST instruction
 		asm("sst.sstarr.f32 %r3, [%rd6], %r1, %f1;");
+		asm("st.local.u32 [%rd1], %r3;");
 		asm("CPTX_END");
 		asm("*/");
 		__syncthreads();
@@ -57,6 +58,8 @@ int main(int argc, char** argv) {
 		printf("%f\t", h_vector[i]);
 		printf("%f\n", h_result[i]);
 	}
+	
+	printf("\nEnd address: 0x%d\n", h_addr[0]);
 
 	cudaFree(d_vector);
 	cudaFree(d_result);
