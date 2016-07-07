@@ -15,24 +15,26 @@ __global__ void SSTTest(float* V, float* R, int* addr, int N) {
 		float element = V[i];
 		asm("/*");
 		asm("CPTX_BEGIN");
-		//asm(".shared .align 4 .b8 _Z9MatrixMulPfS_Pii__sst_var[4];");
-		//asm("sst.shared.f32 %r3, [_Z9MatrixMulPfS_Pii__sst_var], %r1, %f1;");
 		
-		asm(".sstarr .align 4 .b8 _Z9MatrixMulPfS_Pii__sst_var[32];");
-		asm("mov.u64 %rd11, _Z9MatrixMulPfS_Pii__sst_var;");
-		asm("add.s64 %rd12, %rd11, %rd7;");
-		asm("sst.sstarr.f32 %r3, [%rd12], %r1, %f1;");
-		//asm("sst.sstarr.f32 %r3, [_Z9MatrixMulPfS_Pii__sst_var], %r1, %f1;");
+		/*__shared__ float S[8];
+		int ir = N-i-1;
+		S[i] = V[i];
+		__syncthreads();
+		R[i] = S[ir];*/
 
-		//asm("sst.sstarr.f32 %0, [_Z9MatrixMulPfS_Pii__sst_var], %1, %2;" : "=r"(return_val) : "r"(i) : "r"(element));
-		// for now, manually figure out what these registers are to be able to test sst function:
-		// %r3 = register of return_val, need to also run st.local.u32 [%rd1], %r3;
-		// %rd6 = register of V
-		// %r1 = register of i
-		// %f1 = register of element
+		asm(".sstarr .align 4 .b8 _Z9MatrixMulPfS_Pii__sst_var[32];"); // initialize sst_array
+		asm("mov.u64 %rd10, _Z9MatrixMulPfS_Pii__sst_var;"); // rd10 = sst_array
+		asm("add.s64 %rd11, %rd10, %rd9;"); // sst_array[i]
+		asm("sst.sstarr.f32 %r3, [%rd11], %r1, %f1;"); // store element in sst_array[i]
+		__syncthreads();
+		volatile int ir = N-i-1;
+		asm("mul.wide.s32 %rd12, %r5, 4;"); // ir*4
+		asm("add.s64 %rd13, %rd10, %rd12;"); // sst_array[ir]
+		asm("ld.sstarr.f32 %f1, [%rd13];"); // load from sst_array[ir] (replace element)
+		R[i] = element;
+		
 		asm("CPTX_END");
 		asm("*/");
-		R[i] = element;
 		if (return_val != 0) *addr = return_val;
 	}
 }
