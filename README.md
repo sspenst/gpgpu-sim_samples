@@ -17,3 +17,6 @@ Indices are now stored corresponding to values. SST now returns the number of el
 
 781:
 Much cleaner implementation of the inline assembly for the SST instruction. Also got rid of unnecessary variables
+
+782:
+You can now change LENGTH without crashing GPGPU-Sim. Also reduced the number of lines of assembly and added some more output data
