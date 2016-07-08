@@ -1,8 +1,5 @@
 # gpgpu-sim_samples
 
-Run this to compile the CUDA file:
-nvcc -ccbin g++ -gencode arch=compute_20,code=sm_20 -gencode arch=compute_20,code=compute_20 -lcudart -o sst_simple sst_simple.cu
-
 774:
 Stores 8 floats in sstarr memory simulatenously using the SST instruction
 
