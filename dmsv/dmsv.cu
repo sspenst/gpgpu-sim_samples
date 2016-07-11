@@ -7,6 +7,7 @@
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
 #define LENGTH 64 // max length is 64
+#define VERBOSE 1
 
 // SST the vector
 __global__ void SSTVector(float* V, int* addr, int N) {
@@ -77,7 +78,8 @@ int main(int argc, char** argv) {
 	cudaMemcpy(h_vector, d_vector, FSIZE(2*LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_result, d_result, FSIZE(LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_addr, d_addr, SIZE(1), cudaMemcpyDeviceToHost);
-	
+
+#if VERBOSE==1
 	// output results
 	printf("\nMatrix * Vector:\n");
 	for (int i = 0; i < LENGTH; i++) {
@@ -91,6 +93,7 @@ int main(int argc, char** argv) {
 	for (int i = 0; i < LENGTH; i++) {
 		printf("%d\n", (int)h_result[i]);
 	}
+#endif
 	
 	cudaFree(d_matrix);
 	cudaFree(d_vector);

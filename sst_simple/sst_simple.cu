@@ -7,6 +7,7 @@
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
 #define LENGTH 8 // max length is 64
+#define VERBOSE 0
 
 // Test the new SST instruction's functionality
 __global__ void SSTTest(float* V, int* addr, int N) {
@@ -45,7 +46,8 @@ int main(int argc, char** argv) {
 	SSTTest<<<1, LENGTH>>>(d_vector, d_addr, LENGTH);
 	cudaMemcpy(h_vector, d_vector, FSIZE(2*LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_addr, d_addr, SIZE(1), cudaMemcpyDeviceToHost);
-	
+
+#if VERBOSE==1
 	// output results
 	printf("\nOriginal:\tResult: \tIndices:\n");
 	for (int i = 0; i < LENGTH; i++) {
@@ -53,6 +55,7 @@ int main(int argc, char** argv) {
 	}
 	printf("\nSST return value: %d\n", h_addr[0]);
 	printf("Array start: %p\nArray end: %p\n", &h_vector[0], &h_vector[h_addr[0]]);
+#endif
 
 	cudaFree(d_vector);
 	cudaFree(d_addr);
