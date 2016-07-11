@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <cuda.h>
 #include <time.h>
 
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
-#define LENGTH 20 
+#define LENGTH 8 // max length is 64
 
 // Test the new SST instruction's functionality
 __global__ void SSTTest(float* V, int* addr, int N) {
@@ -18,7 +19,7 @@ __global__ void SSTTest(float* V, int* addr, int N) {
 		asm("sst.sstarr.f32 %0, [%1], %2, %3;" : "=r"(return_val) : "l"(&V[0]), "r"(i), "f"(element)); // perform SST instruction
 		asm("CPTX_END");
 		asm("*/");
-		if (i == N-1) *addr = return_val; // last thread stores the result
+		if (return_val != 0) *addr = (int)(return_val - (intptr_t)&V[0])/4; // last thread stores the result
 	}
 }
 

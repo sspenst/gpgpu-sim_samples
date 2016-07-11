@@ -20,3 +20,6 @@ Much cleaner implementation of the inline assembly for the SST instruction. Also
 
 782:
 You can now change LENGTH without crashing GPGPU-Sim. Also reduced the number of lines of assembly and added some more output data
+
+784:
+SST returns address of last element instead of index
