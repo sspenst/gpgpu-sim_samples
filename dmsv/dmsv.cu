@@ -8,11 +8,6 @@
 #define FSIZE(A) A*sizeof(float)
 #define LENGTH 64 // max length is 64
 
-/*
-for each element in sst vector, do multiplication and add result to psum
-store psum in result vector
-*/
-
 // SST the vector
 __global__ void SSTVector(float* V, int* addr, int N) {
 	int i = threadIdx.x;
@@ -29,6 +24,7 @@ __global__ void SSTVector(float* V, int* addr, int N) {
 	}
 }
 
+// perform the matrix-vector multiplication
 __global__ void DMSV(float* M, float* V, float* R, int* addr, int N) {
 	int tid = threadIdx.x;
 	if (tid < N) {
@@ -96,9 +92,14 @@ int main(int argc, char** argv) {
 		printf("%d\n", (int)h_result[i]);
 	}
 	
+	cudaFree(d_matrix);
 	cudaFree(d_vector);
+	cudaFree(d_result);
 	cudaFree(d_addr);
+	free(original);
+	free(h_matrix);
 	free(h_vector);
+	free(h_result);
 	free(h_addr);
 
 	return 0;

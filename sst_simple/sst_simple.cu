@@ -56,6 +56,7 @@ int main(int argc, char** argv) {
 
 	cudaFree(d_vector);
 	cudaFree(d_addr);
+	free(original);
 	free(h_vector);
 	free(h_addr);
 
