@@ -7,7 +7,7 @@
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
 #define LENGTH 8 // max length is 64
-#define VERBOSE 0
+#define VERBOSE 1
 
 // Test the new SST instruction's functionality
 __global__ void SSTTest(float* V, int* addr, int N) {
@@ -32,8 +32,6 @@ int main(int argc, char** argv) {
 	for (int i = 0; i < LENGTH; i++) {
 		if (i % 2 == 1) original[i] = 0.0;
 		else original[i] = i + 1.0;
-	}
-	for (int i = 0; i < LENGTH; i++) {
 		h_vector[i] = original[i];
 		h_vector[i+LENGTH] = -1.0; // initialize the second half of the array (indices) with -1
 	}

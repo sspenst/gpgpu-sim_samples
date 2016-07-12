@@ -1,11 +1,12 @@
-OBJS = dmsv sst_simple
+OBJS = dmsv smsv sst_simple
 
 all: $(OBJS)
 
 $(OBJS):
-	$(MAKE) -C $@
+	@echo "Compiling $@..."
+	@$(MAKE) -s -C $@
 
 clean:
-	for obj in $(OBJS); do $(MAKE) clean -C $$obj; done
+	@for obj in $(OBJS); do $(MAKE) clean -s -C $$obj; done
 
 .PHONY: $(OBJS)
