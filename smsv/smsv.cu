@@ -51,8 +51,8 @@ __global__ void SMSV(float* M, float* V, float* R, float* P, int* maddr, int* ad
 		int numCols = (int)(*addr - (intptr_t)&V[0])/4; // end of SST for vector
 		for (int i = 0; i <= numCols; i++) { // loop through columns
 			int vid = (int)V[i+N]; // vector index
-			int maxRow = (int)(maddr[vid] - (intptr_t)&M[2*N*vid])/4; // end of SST for column
-			if (tid <= maxRow) {
+			int cEnd = (int)(maddr[vid] - (intptr_t)&M[2*N*vid])/4; // end of SST for column
+			if (tid <= cEnd) {
 				int mid = (int)M[2*N*vid + tid+N]; // matrix index (THIS IS -1 SOMEHOW???)
 				P[psumIndex[mid] + N*mid] += M[2*N*vid + tid] * V[i]; // append M element * V element to correct P row
 				psumIndex[mid]++;
