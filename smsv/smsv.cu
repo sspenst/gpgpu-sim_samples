@@ -6,7 +6,7 @@
 
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
-#define LENGTH 8 // max length is 64
+#define LENGTH 333 // max threads is 2048
 #define VERBOSE 1
 
 // SST the matrix
@@ -53,17 +53,26 @@ __global__ void SMSV(float* M, float* V, float* R, float* P, int* maddr, int* ad
 			int vid = (int)V[i+N]; // vector index
 			int cEnd = (int)(maddr[vid] - (intptr_t)&M[2*N*vid])/4; // end of SST for column
 			if (tid <= cEnd) {
-				int mid = (int)M[2*N*vid + tid+N]; // matrix index (THIS IS -1 SOMEHOW???)
+				int mid = (int)M[2*N*vid + tid+N]; // matrix index
 				P[psumIndex[mid] + N*mid] += M[2*N*vid + tid] * V[i]; // append M element * V element to correct P row
 				psumIndex[mid]++;
 			}
+			__syncthreads();
 		}
-		__syncthreads(); // P is finished being written to
 		float psum = 0.0;
 		for (int i = 0; i < psumIndex[tid]; i++) {
 			psum += P[tid*N + i];
 		}
 		R[tid] = psum;
+	}
+}
+
+// column major matrix-vector multiplication
+void matMul(float* matrix, float* vector, float* output, int width, int height) {
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++)	{
+			output[i] += matrix[j * height + i] * vector[j];
+		}
 	}
 }
 
@@ -75,8 +84,9 @@ int main(int argc, char** argv) {
 	float *h_matrix = (float*)calloc(2*LENGTH*LENGTH, FSIZE(1)); // x = LENGTH, y = 2*LENGTH
 	float *h_vector = (float*)calloc(2*LENGTH, FSIZE(1)); // 2*LENGTH to store values as well as indices
 	float *h_result = (float*)malloc(FSIZE(LENGTH));
-	float *h_psum = (float*)calloc(LENGTH*LENGTH, FSIZE(1)); // ensure psum matrix is initialized with 0s
+	float *h_psum = (float*)calloc(LENGTH*LENGTH, FSIZE(1)); // ensure psum matrix (row major order) is initialized with 0s
 	int *h_maddr = (int*)malloc(SIZE(LENGTH));
+	float *answer = (float*)calloc(LENGTH, FSIZE(1));
 
 	// use this matrix in column major order
 	for (int i = 0; i < LENGTH; i++) {
@@ -129,7 +139,29 @@ int main(int argc, char** argv) {
 	for (int i = 0; i < LENGTH; i++) {
 		printf("%d\n", (int)h_result[i]);
 	}
+	
+	printf("\nCorrect result:\n");
 #endif
+	matMul(m_orig, v_orig, answer, LENGTH, LENGTH);
+	bool correct = 1;
+	for (int i = 0; i < LENGTH; i++) {
+#if VERBOSE==1
+		printf("%d", (int)answer[i]);
+#endif
+		if (answer[i] != h_result[i]) {
+			correct = 0;
+#if VERBOSE==1
+			printf("\t%d\t%d\t%d", i, (int)answer[i], (int)h_result[i]);
+#else
+			break;
+#endif
+		}
+#if VERBOSE==1
+		printf("\n");
+#endif
+	}
+	if (correct == false) printf("\nWARNING: Incorrect result...\n");
+	else printf("\nCorrect result!\n");
 	
 	cudaFree(d_matrix);
 	cudaFree(d_vector);

@@ -6,7 +6,7 @@
 
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
-#define LENGTH 8 // max length is 64
+#define LENGTH 8 // max threads is 2048
 #define VERBOSE 1
 
 // Test the new SST instruction's functionality

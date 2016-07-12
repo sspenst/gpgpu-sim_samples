@@ -6,8 +6,8 @@
 
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
-#define LENGTH 8 // max length is 64
-#define VERBOSE 1
+#define LENGTH 1024 // max threads is 2048
+#define VERBOSE 0
 
 // SST the vector
 __global__ void SSTVector(float* V, int* addr, int N) {
@@ -38,6 +38,15 @@ __global__ void DMSV(float* M, float* V, float* R, int* addr, int N) {
 	}
 }
 
+// column major matrix-vector multiplication
+void matMul(float* matrix, float* vector, float* output, int width, int height) {
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++)	{
+			output[i] += matrix[j * height + i] * vector[j];
+		}
+	}
+}
+
 int main(int argc, char** argv) {
 	srand(time(NULL));
 
@@ -46,6 +55,7 @@ int main(int argc, char** argv) {
 	float *h_vector = (float*)calloc(2*LENGTH, FSIZE(1)); // 2*LENGTH to store values as well as indices
 	float *h_result = (float*)malloc(FSIZE(LENGTH));
 	int *h_addr = (int*)malloc(SIZE(1));
+	float *answer = (float*)malloc(FSIZE(LENGTH));
 
 	// use this matrix in column major order
 	for (int i = 0; i < LENGTH; i++) {
@@ -91,6 +101,17 @@ int main(int argc, char** argv) {
 		printf("%d\n", (int)h_result[i]);
 	}
 #endif
+
+	matMul(h_matrix, original, answer, LENGTH, LENGTH);
+	bool correct = 1;
+	for (int i = 0; i < LENGTH; i++) {
+		if (answer[i] != h_result[i]) {
+			correct = 0;
+			break;
+		}
+	}
+	if (correct == false) printf("\nWARNING: Incorrect result...\n");
+	else printf("\nCorrect result!\n");
 	
 	cudaFree(d_matrix);
 	cudaFree(d_vector);

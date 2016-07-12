@@ -1,4 +1,4 @@
-OBJS = dmsv smsv sst_simple
+OBJS = dmsv smsv smsv-struct sst_simple
 
 all: $(OBJS)
 
