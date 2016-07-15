@@ -1,5 +1,8 @@
 # gpgpu-sim_samples
 
+dmdv:
+Dense matrix times dense vector using the standard ISA.
+
 dmsv:
 Dense matrix times sparse vector using the SST instruction.
 
