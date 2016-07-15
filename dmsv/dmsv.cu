@@ -6,7 +6,8 @@
 
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
-#define LENGTH 1024 // max threads is 2048
+#define LENGTH 64 // max threads is 2048
+#define BLOCK_SIZE 32
 #define VERBOSE 0
 
 // SST the vector
@@ -26,15 +27,25 @@ __global__ void SSTVector(float* V, int* addr, int N) {
 
 // perform the matrix-vector multiplication
 __global__ void DMSV(float* M, float* V, float* R, int* addr, int N) {
+	int bid = blockIdx.x;
 	int tid = threadIdx.x;
 	if (tid < N) {
+		__shared__ float Vs[2*LENGTH];
+		for (int i = tid; i < tid+LENGTH; i+=BLOCK_SIZE) {
+			Vs[i] = V[i];
+			Vs[i+N] = V[i+N];
+		}
+		__syncthreads();
+		
 		int numCols = (int)(*addr - (intptr_t)&V[0])/4;
 		float psum = 0.0;
 		for (int i = 0; i <= numCols; i++) {
-			int vid = (int)V[i+N];
-			psum += M[N*vid + tid] * V[i];
+			int vid = (int)Vs[i+N];
+			//int vid = (int)V[i+N];
+			psum += M[N*vid + bid*BLOCK_SIZE + tid] * Vs[i];
+			//psum += M[N*vid + bid*BLOCK_SIZE + tid] * V[i];
 		}
-		R[tid] = psum;
+		R[bid*BLOCK_SIZE + tid] = psum;
 	}
 }
 
@@ -56,6 +67,7 @@ int main(int argc, char** argv) {
 	float *h_result = (float*)malloc(FSIZE(LENGTH));
 	int *h_addr = (int*)malloc(SIZE(1));
 	float *answer = (float*)malloc(FSIZE(LENGTH));
+	unsigned zero = 0;
 
 	// use this matrix in column major order
 	for (int i = 0; i < LENGTH; i++) {
@@ -65,8 +77,11 @@ int main(int argc, char** argv) {
 		}
 	}
 	for (int i = 0; i < LENGTH; i++) {
-		int r = rand() % 30 + 1; // 70% chance of zero
+		int r = rand() % 90 + 1; // 90% chance of zero
+		//int r = rand() % 45 + 1; // 80% chance of zero
+		//int r = rand() % 30 + 1; // 70% chance of zero
 		if (r < 10) original[i] = r;
+		else zero++;
 		h_vector[i] = original[i];
 		h_vector[i+LENGTH] = -1.0; // initialize the second half of the array (indices) with -1
 	}
@@ -80,7 +95,7 @@ int main(int argc, char** argv) {
 	cudaMemcpy(d_matrix, h_matrix, FSIZE(LENGTH*LENGTH), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_vector, h_vector, FSIZE(2*LENGTH), cudaMemcpyHostToDevice);
 	SSTVector<<<1, LENGTH>>>(d_vector, d_addr, LENGTH);
-	DMSV<<<1, LENGTH>>>(d_matrix, d_vector, d_result, d_addr, LENGTH);
+	DMSV<<<LENGTH/BLOCK_SIZE, BLOCK_SIZE>>>(d_matrix, d_vector, d_result, d_addr, LENGTH);
 	cudaMemcpy(h_matrix, d_matrix, FSIZE(LENGTH*LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_vector, d_vector, FSIZE(2*LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_result, d_result, FSIZE(LENGTH), cudaMemcpyDeviceToHost);
@@ -100,16 +115,29 @@ int main(int argc, char** argv) {
 	for (int i = 0; i < LENGTH; i++) {
 		printf("%d\n", (int)h_result[i]);
 	}
+	printf("\nCorrect result:\n");
 #endif
-
 	matMul(h_matrix, original, answer, LENGTH, LENGTH);
 	bool correct = 1;
 	for (int i = 0; i < LENGTH; i++) {
+#if VERBOSE==1
+		printf("%d", (int)answer[i]);
+#endif
 		if (answer[i] != h_result[i]) {
 			correct = 0;
+#if VERBOSE==1
+			printf("\t%d\t%d\t%d", i, (int)answer[i], (int)h_result[i]);
+#else
 			break;
+#endif
 		}
+#if VERBOSE==1
+		printf("\n");
+#endif
 	}
+
+	printf("\nVector zero percentage: %f%%\n", (float)zero/(float)LENGTH*100);
+
 	if (correct == false) printf("\nWARNING: Incorrect result...\n");
 	else printf("\nCorrect result!\n");
 	

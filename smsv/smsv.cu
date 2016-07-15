@@ -6,14 +6,16 @@
 
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
-#define LENGTH 333 // max threads is 2048
-#define VERBOSE 1
+#define LENGTH 64 // max threads is 2048
+#define CTA LENGTH 
+#define VERBOSE 0
 
 // SST the matrix
 __global__ void SSTMatrix(float* M, int* maddr, int N) {
+	int bid = blockIdx.x;
 	int tid = threadIdx.x;
 	if (tid < N) {
-		for (int i = 0; i < N; i++) {
+		for (int i = bid; i < N; i += CTA) {
 			int return_val = 0;
 			float element = M[i*2*N + tid];
 			asm("/*");
@@ -42,28 +44,23 @@ __global__ void SSTVector(float* V, int* addr, int N) {
 }
 
 // perform the matrix-vector multiplication
-__global__ void SMSV(float* M, float* V, float* R, float* P, int* maddr, int* addr, int N) {
+__global__ void SMSV(float* M, float* V, float* R, int* maddr, int* addr, int N) {
 	int tid = threadIdx.x;
 	if (tid < N) {
-		__shared__ int psumIndex[LENGTH];
-		psumIndex[tid] = 0; // initialize psumIndex with 0s
-		__syncthreads(); // psumIndex is finished being written to
+		__shared__ int psum[LENGTH];
+		psum[tid] = 0; // initialize psum with 0s
+		__syncthreads(); // psum is finished being written to
 		int numCols = (int)(*addr - (intptr_t)&V[0])/4; // end of SST for vector
 		for (int i = 0; i <= numCols; i++) { // loop through columns
 			int vid = (int)V[i+N]; // vector index
 			int cEnd = (int)(maddr[vid] - (intptr_t)&M[2*N*vid])/4; // end of SST for column
 			if (tid <= cEnd) {
 				int mid = (int)M[2*N*vid + tid+N]; // matrix index
-				P[psumIndex[mid] + N*mid] += M[2*N*vid + tid] * V[i]; // append M element * V element to correct P row
-				psumIndex[mid]++;
+				psum[mid] += M[2*N*vid + tid] * V[i];
 			}
 			__syncthreads();
 		}
-		float psum = 0.0;
-		for (int i = 0; i < psumIndex[tid]; i++) {
-			psum += P[tid*N + i];
-		}
-		R[tid] = psum;
+		R[tid] = psum[tid];
 	}
 }
 
@@ -84,46 +81,98 @@ int main(int argc, char** argv) {
 	float *h_matrix = (float*)calloc(2*LENGTH*LENGTH, FSIZE(1)); // x = LENGTH, y = 2*LENGTH
 	float *h_vector = (float*)calloc(2*LENGTH, FSIZE(1)); // 2*LENGTH to store values as well as indices
 	float *h_result = (float*)malloc(FSIZE(LENGTH));
-	float *h_psum = (float*)calloc(LENGTH*LENGTH, FSIZE(1)); // ensure psum matrix (row major order) is initialized with 0s
-	int *h_maddr = (int*)malloc(SIZE(LENGTH));
 	float *answer = (float*)calloc(LENGTH, FSIZE(1));
+	unsigned m_zero = 0;
+	unsigned v_zero = 0;
 
 	// use this matrix in column major order
 	for (int i = 0; i < LENGTH; i++) {
 		for (int j = 0; j < LENGTH; j++) {
-			int r = rand() % 18 + 1; // 50% chance of zero
+			int r = rand() % 90 + 1; // 50% chance of zero
 			if (r < 10) m_orig[i + j*LENGTH] = r;
+			else m_zero++;
 			h_matrix[i + j*2*LENGTH] = m_orig[i + j*LENGTH];
 			h_matrix[i+LENGTH + j*2*LENGTH] = -1.0;
 		}
 	}
 	for (int i = 0; i < LENGTH; i++) {
-		int r = rand() % 30 + 1; // 70% chance of zero
+		int r = rand() % 90 + 1; // 70% chance of zero
 		if (r < 10) v_orig[i] = r;
+		else v_zero++;
 		h_vector[i] = v_orig[i];
 		h_vector[i+LENGTH] = -1.0; // initialize the second half of the array (indices) with -1
 	}
 
-	float *d_matrix, *d_vector, *d_result, *d_psum;
+	float *d_matrix, *d_vector, *d_result;
 	int *d_maddr, *d_addr;
 	cudaMalloc(&d_matrix, FSIZE(2*LENGTH*LENGTH));
 	cudaMalloc(&d_vector, FSIZE(2*LENGTH));
 	cudaMalloc(&d_result, FSIZE(LENGTH));
-	cudaMalloc(&d_psum, FSIZE(LENGTH*LENGTH));
 	cudaMalloc(&d_maddr, SIZE(LENGTH));
 	cudaMalloc(&d_addr, SIZE(1));
 	cudaMemcpy(d_matrix, h_matrix, FSIZE(2*LENGTH*LENGTH), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_vector, h_vector, FSIZE(2*LENGTH), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_psum, h_psum, FSIZE(LENGTH*LENGTH), cudaMemcpyHostToDevice);
 
-	SSTMatrix<<<1, LENGTH>>>(d_matrix, d_maddr, LENGTH);
+	SSTMatrix<<<CTA, LENGTH>>>(d_matrix, d_maddr, LENGTH);
+	
+	cudaMemcpy(h_matrix, d_matrix, FSIZE(2*LENGTH*LENGTH), cudaMemcpyDeviceToHost);
+	
+	
 	SSTVector<<<1, LENGTH>>>(d_vector, d_addr, LENGTH);
-	SMSV<<<1, LENGTH>>>(d_matrix, d_vector, d_result, d_psum, d_maddr, d_addr, LENGTH);
+	SMSV<<<1, LENGTH>>>(d_matrix, d_vector, d_result, d_maddr, d_addr, LENGTH);
 	
 	cudaMemcpy(h_matrix, d_matrix, FSIZE(2*LENGTH*LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_vector, d_vector, FSIZE(2*LENGTH), cudaMemcpyDeviceToHost);
 	cudaMemcpy(h_result, d_result, FSIZE(LENGTH), cudaMemcpyDeviceToHost);
-	cudaMemcpy(h_maddr, d_maddr, SIZE(LENGTH), cudaMemcpyDeviceToHost);
+	
+	/*for (int i = 0; i < LENGTH; i++)
+		for (int j = 0; h_matrix[j+LENGTH+i*2*LENGTH] != -1.0; j++)
+			if (m_orig[(int)h_matrix[j+LENGTH+i*2*LENGTH] + i*LENGTH] != h_matrix[j+i*2*LENGTH])
+				printf("\nSST MESSED UP\n");
+
+	FILE *fp = fopen("data2.txt", "w+");
+	fprintf(fp, "\n\nINTERMEDIATE MATRIX @$!$!#$!#$@!#^!<S-F6>^$@*(#$&(8\n\n");
+	for (int i = 0; i < LENGTH; i++) {
+		for (int j = 0; j < LENGTH; j++) {
+			fprintf(fp, "%d/%d\t", (int)h_matrix[j+i*2*LENGTH], (int)h_matrix[j+LENGTH+i*2*LENGTH]);
+		}
+		fprintf(fp, "\n");
+	}
+
+	fprintf(fp, "\n\nINTERMEDIATE VECTOR\n\n");
+	for (int i = 0; i < LENGTH; i++) {
+		fprintf(fp, "%d/%d ", (int)h_vector[i], (int)h_vector[i+LENGTH]);
+	}
+
+	fprintf(fp, "\n\nPSUSMSSDMFIP\n");
+	for (int i = 0; i < LENGTH; i++) {
+		for (int j = 0; j < LENGTH; j++) {
+			fprintf(fp, "%d:%d ", j, (int)h_psum[i*LENGTH + j]);
+		}
+		fprintf(fp, "\n");
+	}
+
+	for (int i = 0; i < LENGTH; i++) {
+		for (int j = 0; j < LENGTH; j++) {
+			if ((int)m_orig[i+j*LENGTH] != 0 && (int)v_orig[j] != 0) {
+				fprintf(fp, "%d:%d ", j, (int)m_orig[i+j*LENGTH]*(int)v_orig[j]);
+			}
+		}
+		fprintf(fp, "\n");
+	}
+
+	for (int i = 0; i < LENGTH; i++) {
+		for (int j = 0; j < LENGTH; j++) {
+			if ((int)m_orig[i+j*LENGTH] != 0 && (int)v_orig[j] != 0) {
+				bool exists = false;
+				for (int k = 0; k < LENGTH; k++) {
+					if ((int)h_psum[i*LENGTH+k] == (int)m_orig[i+j*LENGTH]*(int)v_orig[j]) exists = true;
+				}
+				if (exists == false) fprintf(fp, "PSUM MESSED UP: %d %d %d %d\n", i, j, (int)m_orig[i+j*LENGTH], (int)v_orig[j]);
+			}
+		}
+	}
+	fclose(fp);*/
 
 #if VERBOSE==1
 	// output results
@@ -160,6 +209,10 @@ int main(int argc, char** argv) {
 		printf("\n");
 #endif
 	}
+
+	printf("\nMatrix zero percentage: %f%%\n", (float)m_zero/(float)LENGTH/(float)LENGTH*100);
+	printf("Vector zero percentage: %f%%\n", (float)v_zero/(float)LENGTH*100);
+
 	if (correct == false) printf("\nWARNING: Incorrect result...\n");
 	else printf("\nCorrect result!\n");
 	
@@ -173,7 +226,7 @@ int main(int argc, char** argv) {
 	free(h_matrix);
 	free(h_vector);
 	free(h_result);
-	free(h_maddr);
+	free(answer);
 
 	return 0;
 }
