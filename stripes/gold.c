@@ -37,6 +37,8 @@ int main() {
 		}
 	}
 
+	fclose(fp);
+
 	// perform convolutional layer computation
 	for (int oi = 0; oi < ox; oi++) {
 		for (int oj = 0; oj < oy; oj++) {
