@@ -1,0 +1,4 @@
+data.py creates an input file to be used for gold-basic.c or gold.c
+gold-basic.c functionally executes a convolutional layer
+gold.c does the same as gold-basic.c, except it allows for a variable number of neuron bits to be processed
+clc.cu attempts to showcase how new hardware with a new instruction could bit-serially compute convolutional layers

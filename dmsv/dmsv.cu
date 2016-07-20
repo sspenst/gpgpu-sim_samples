@@ -6,7 +6,7 @@
 
 #define SIZE(A) A*sizeof(int)
 #define FSIZE(A) A*sizeof(float)
-#define LENGTH 64 // max threads is 2048
+#define LENGTH 512 // max threads is 2048
 #define BLOCK_SIZE 32
 #define VERBOSE 0
 
