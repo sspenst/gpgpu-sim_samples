@@ -28,16 +28,24 @@ __global__ void CLCTest(int *neuron, int *synapse, int *output, conv_data cd) {
 	
 		for(int i = 0; i < window_size; i += NUM_MULTIPLIERS) {
 			int out_neuron;
-			asm("/*");
-			asm("CPTX_BEGIN");
 			// load synapses into operand collectors
-			for (int j = i+tid; j < i+NUM_MULTIPLIERS && j < window_size; j += cd.ox*cd.oy) {
+			for (volatile int j = i+tid; (j < i+NUM_MULTIPLIERS) && (j < window_size); j += cd.ox*cd.oy) {
+				asm("/*");
+				asm("CPTX_BEGIN");
 				asm("ldo.s32 %0, [%1];" : "=r"(j) : "r"(synapse[j]));
+				asm("CPTX_END");
+				asm("*/");
 			}
 			// load neurons into operand collectors
-			for (int j = i; j < i+NUM_MULTIPLIERS && j < window_size; j++) {
+			for (volatile int j = i; (j < i+NUM_MULTIPLIERS) && (j < window_size); j++) {
+				asm("/*");
+				asm("CPTX_BEGIN");
 				asm("ldo.s32 %0, [%1];" : "=r"(j) : "r"(window[j]));
+				asm("CPTX_END");
+				asm("*/");
 			}
+			asm("/*");
+			asm("CPTX_BEGIN");
 			asm("clc.s32 %0, %1, %2;" : "=r"(out_neuron) : "r"(tid), "r"(precision));
 			asm("CPTX_END");
 			asm("*/");
@@ -90,7 +98,7 @@ int main(int argc, char** argv) {
 	cudaMemcpy(d_neuron, neuron, SIZE(cd.nx*cd.ny*cd.nz), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_synapse, synapse, SIZE(cd.f*cd.sx*cd.sy*cd.nz), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_output, output, SIZE(cd.ox*cd.oy*cd.f), cudaMemcpyHostToDevice);
-
+	
 	// apply one filter per kernel
 	for (int f = 0; f < cd.f; f++) {
 		int blocks = cd.ox*cd.oy / MULTIPLIER_SIZE + ((cd.ox*cd.oy) % MULTIPLIER_SIZE != 0); // number of thread blocks required when there are MULTIPLIER_SIZE threads per block
