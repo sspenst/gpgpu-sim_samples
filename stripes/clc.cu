@@ -4,6 +4,8 @@
 #include <cuda.h>
 
 #define SIZE(A) A*sizeof(int)
+
+// for this method to work, (MULTIPLIER_SIZE <= NUM_MULTIPLIERS) must be true
 #define MULTIPLIER_SIZE 32
 #define NUM_MULTIPLIERS 32 // arbitrary size
 
@@ -19,37 +21,52 @@ typedef struct {
 __global__ void CLCTest(int *neuron, int *synapse, int *output, conv_data cd) {
 	volatile int tid = threadIdx.x;
 	int bid = blockIdx.x;
-	int window_id = bid*MULTIPLIER_SIZE + tid;
+	bool last_block = (cd.ox*cd.oy / NUM_MULTIPLIERS + ((cd.ox*cd.oy) % NUM_MULTIPLIERS != 0) - 1) == bid;
 
-	if (window_id < cd.ox*cd.oy) {
-		int *window = neuron + (window_id/cd.ox)*cd.nx*cd.stride + (window_id%cd.ox)*cd.stride; // addr = base + row offset + col offset (multiply by 4?)
-		int precision = cd.ibits + (cd.obits << 16);
-		int window_size = cd.sx*cd.sy*cd.nz;
-	
-		for(int i = 0; i < window_size; i += NUM_MULTIPLIERS) {
-			int out_neuron;
-			// load synapses into operand collectors
-			for (volatile int j = i+tid; (j < i+NUM_MULTIPLIERS) && (j < window_size); j += cd.ox*cd.oy) {
-				asm("/*");
-				asm("CPTX_BEGIN");
-				asm("ldo.s32 %0, [%1];" : "=r"(j) : "r"(synapse[j]));
-				asm("CPTX_END");
-				asm("*/");
-			}
-			// load neurons into operand collectors
-			for (volatile int j = i; (j < i+NUM_MULTIPLIERS) && (j < window_size); j++) {
-				asm("/*");
-				asm("CPTX_BEGIN");
-				asm("ldo.s32 %0, [%1];" : "=r"(j) : "r"(window[j]));
-				asm("CPTX_END");
-				asm("*/");
-			}
+	int window_size = cd.sx*cd.sy*cd.nz;
+	int num_windows = cd.ox*cd.oy;
+
+	for (int i = 0; i < window_size/NUM_MULTIPLIERS; i++) {
+		volatile int out_neuron;
+		volatile int j;
+
+		// send groups of 4 neurons to the operand collector
+		for (j = bid*MULTIPLIER_SIZE+3; (j < (bid+1)*MULTIPLIER_SIZE) && (j < num_windows); j += 4) {
+			int temp[4];
+			temp[0] = i*NUM_MULTIPLIERS+tid + ((j-3)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-3)%cd.oy)*cd.nz*cd.stride;
+			temp[1] = i*NUM_MULTIPLIERS+tid + ((j-2)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-2)%cd.oy)*cd.nz*cd.stride;
+			temp[2] = i*NUM_MULTIPLIERS+tid + ((j-1)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-1)%cd.oy)*cd.nz*cd.stride;
+			temp[3] = i*NUM_MULTIPLIERS+tid + ((j-0)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-0)%cd.oy)*cd.nz*cd.stride;
+
 			asm("/*");
 			asm("CPTX_BEGIN");
-			asm("clc.s32 %0, %1, %2;" : "=r"(out_neuron) : "r"(tid), "r"(precision));
+			asm("clp.s32 %0, %1, %2, %3;" :: "r"(neuron[temp[0]]), "r"(neuron[temp[1]]), "r"(neuron[temp[2]]), "r"(neuron[temp[3]]));
 			asm("CPTX_END");
 			asm("*/");
-			output[tid] = out_neuron;
+		}
+
+		// send the remaining neurons individually to the operand collector
+		if (last_block) { // this assumes MULTIPLIER_SIZE % 4 == 0
+			j -= 3; // revert the last iteration from previous for loop and add 1
+			for (; j < num_windows; j++) {
+				asm("/*");
+				asm("CPTX_BEGIN");
+				asm("clp.s32 %0;" :: "r"(neuron[i+tid + (j/cd.oy)*cd.ny*cd.nz*cd.stride + (j%cd.oy)*cd.nz*cd.stride]));
+				asm("CPTX_END");
+				asm("*/");
+			}
+		}
+
+		// compute the result
+		asm("/*");
+		asm("CPTX_BEGIN");
+		asm("clc.s32 %0, %1, %2, %3;" : "=r"(out_neuron) : "r"(synapse[i*NUM_MULTIPLIERS+tid]), "r"(cd.ibits), "r"(cd.obits));
+		asm("CPTX_END");
+		asm("*/");
+
+		// store the result, making sure the garbage return values are ignored
+		if ((!last_block && (tid < MULTIPLIER_SIZE)) || (last_block && (tid < num_windows % MULTIPLIER_SIZE))) {
+			output[bid*MULTIPLIER_SIZE + tid] += out_neuron;
 		}
 	}
 }
@@ -62,8 +79,8 @@ int main(int argc, char** argv) {
 	// ox = (nx-sx)/stride + 1;
 	// oy = (ny-sy)/stride + 1;
 
-	int neuron[cd.nx][cd.ny][cd.nz]; // maybe change these to 1D
-	int synapse[cd.f][cd.sx][cd.sy][cd.nz];
+	int neuron[cd.nx*cd.ny*cd.nz];
+	int synapse[cd.f*cd.sx*cd.sy*cd.nz];
 	int output[cd.f*cd.ox*cd.oy];
 	memset(output, 0, SIZE(cd.ox*cd.oy*cd.f));
 
@@ -74,7 +91,7 @@ int main(int argc, char** argv) {
 	for (int k = 0; k < cd.nz; k++) {
 		for (int j = 0; j < cd.ny; j++) {
 			for (int i = 0; i < cd.nx; i++) {
-				fscanf(fp, "%d", &neuron[i][j][k]);
+				fscanf(fp, "%d", &neuron[i*cd.ny*cd.nz + j*cd.nz + k]);
 			}
 		}
 	}
@@ -83,14 +100,14 @@ int main(int argc, char** argv) {
 		for (int k = 0; k < cd.nz; k++) {
 			for (int j = 0; j < cd.sy; j++) {
 				for (int i = 0; i < cd.sx; i++) {
-					fscanf(fp, "%d", &synapse[l][i][j][k]);
+					fscanf(fp, "%d", &synapse[l*cd.sx*cd.sy*cd.nz + i*cd.sy*cd.nz + j*cd.nz + k]);
 				}
 			}
 		}
 	}
 
 	fclose(fp);
-
+	
 	int *d_neuron, *d_synapse, *d_output;
 	cudaMalloc(&d_neuron, SIZE(cd.nx*cd.ny*cd.nz));
 	cudaMalloc(&d_synapse, SIZE(cd.f*cd.sx*cd.sy*cd.nz));
@@ -98,14 +115,14 @@ int main(int argc, char** argv) {
 	cudaMemcpy(d_neuron, neuron, SIZE(cd.nx*cd.ny*cd.nz), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_synapse, synapse, SIZE(cd.f*cd.sx*cd.sy*cd.nz), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_output, output, SIZE(cd.ox*cd.oy*cd.f), cudaMemcpyHostToDevice);
-	
+
+	// one thread block is composed of MULTIPLIER_SIZE windows and NUM_MULTIPLIERS threads
+	int blocks = cd.ox*cd.oy / NUM_MULTIPLIERS + ((cd.ox*cd.oy) % NUM_MULTIPLIERS != 0);
 	// apply one filter per kernel
 	for (int f = 0; f < cd.f; f++) {
-		int blocks = cd.ox*cd.oy / MULTIPLIER_SIZE + ((cd.ox*cd.oy) % MULTIPLIER_SIZE != 0); // number of thread blocks required when there are MULTIPLIER_SIZE threads per block
-		// this assumes there are NUM_MULTIPLIERS multipliers per thread block
-		CLCTest<<<blocks, MULTIPLIER_SIZE>>>(d_neuron, d_synapse + f*cd.sx*cd.sy*cd.nz, d_output + f*cd.ox*cd.oy, cd);
+		CLCTest<<<blocks, NUM_MULTIPLIERS>>>(d_neuron, d_synapse + f*cd.sx*cd.sy*cd.nz, d_output + f*cd.ox*cd.oy, cd);
 	}
-	
+
 	cudaMemcpy(output, d_output, SIZE(cd.ox*cd.oy*cd.f), cudaMemcpyDeviceToHost);
 
 	// print output
