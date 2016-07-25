@@ -33,10 +33,9 @@ __global__ void CLCTest(int *neuron, int *synapse, int *output, conv_data cd) {
 		// send groups of 4 neurons to the operand collector
 		for (j = bid*MULTIPLIER_SIZE+3; (j < (bid+1)*MULTIPLIER_SIZE) && (j < num_windows); j += 4) {
 			int temp[4];
-			temp[0] = i*NUM_MULTIPLIERS+tid + ((j-3)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-3)%cd.oy)*cd.nz*cd.stride;
-			temp[1] = i*NUM_MULTIPLIERS+tid + ((j-2)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-2)%cd.oy)*cd.nz*cd.stride;
-			temp[2] = i*NUM_MULTIPLIERS+tid + ((j-1)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-1)%cd.oy)*cd.nz*cd.stride;
-			temp[3] = i*NUM_MULTIPLIERS+tid + ((j-0)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-0)%cd.oy)*cd.nz*cd.stride;
+			for (int k = 0; k < 4; k++) {
+				temp[k] = i*NUM_MULTIPLIERS+tid + ((j-3+k)/cd.oy)*cd.ny*cd.nz*cd.stride + ((j-3+k)%cd.oy)*cd.nz*cd.stride;
+			}
 
 			asm("/*");
 			asm("CPTX_BEGIN");
