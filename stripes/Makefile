@@ -9,8 +9,10 @@ data: data.py
 $(OBJS):
 	gcc -g -Wall $@.c -o $@ -std=c99
 
-clc:
+clc: clc.cu
 	nvcc -ccbin g++ -gencode arch=compute_$(SM),code=sm_$(SM) -gencode arch=compute_$(SM),code=compute_$(SM) -lcudart -o clc clc.cu
 
 clean: 
 	rm -f $(OBJS) input clc
+
+.PHONY: $(OBJS)

@@ -6,12 +6,36 @@ int main() {
 	int nx = 8, ny = 8, nz = 3; // input dimensions
 	int f = 2; // number of filters
 	int sx = 4, sy = 4; // filter dimensions
-	int ox = 3, oy = 3; // output dimensions
+	int ox = (nx-sx)/stride + 1; // output dimensions
+	int oy = (ny-sy)/stride + 1;
 
-	int neuron[nx][ny][nz];
-	int synapse[f][sx][sy][nz];
-	int output[ox][oy][f];
-	
+	int ***neuron = (int***)malloc(nz*sizeof(int**));
+	for (int z = 0; z < nz; z++) {
+		neuron[z] = (int**)malloc(ny*sizeof(int*));
+		for (int y = 0; y < ny; y++) {
+			neuron[z][y] = (int*)malloc(nx*sizeof(int));
+		}
+	}
+
+	int ****synapse = (int****)malloc(f*sizeof(int***));
+	for (int i = 0; i < f; i++) {
+		synapse[i] = (int***)malloc(nz*sizeof(int**));
+		for (int z = 0; z < nz; z++) {
+			synapse[i][z] = (int**)malloc(sy*sizeof(int*));
+			for (int y = 0; y < sy; y++) {
+				synapse[i][z][y] = (int*)malloc(sx*sizeof(int));
+			}
+		}
+	}
+
+	int ***output = (int***)malloc(f*sizeof(int**));
+	for (int i = 0; i < f; i++) {
+		output[i] = (int**)malloc(oy*sizeof(int*));
+		for(int y = 0; y < ny; y++) {
+			output[i][y] = (int*)malloc(ox*sizeof(int));
+		}
+	}
+
 	FILE *fp;
 	fp = fopen("input", "r");
 
@@ -19,7 +43,7 @@ int main() {
 	for (int k = 0; k < nz; k++) {
 		for (int j = 0; j < ny; j++) {
 			for (int i = 0; i < nx; i++) {
-				fscanf(fp, "%d", &neuron[i][j][k]);
+				fscanf(fp, "%d", &neuron[k][j][i]);
 			}
 		}
 	}
@@ -28,7 +52,7 @@ int main() {
 		for (int k = 0; k < nz; k++) {
 			for (int j = 0; j < sy; j++) {
 				for (int i = 0; i < sx; i++) {
-					fscanf(fp, "%d", &synapse[l][i][j][k]);
+					fscanf(fp, "%d", &synapse[l][k][j][i]);
 				}
 			}
 		}
@@ -46,11 +70,11 @@ int main() {
 				for (int i = 0; i < sx; i++) {
 					for (int j = 0; j < sy; j++) {
 						for (int k = 0; k < nz; k++) {
-							sum += synapse[ok][i][j][k]*neuron[i+xstart][j+ystart][k];
+							sum += synapse[ok][k][j][i]*neuron[k][j+ystart][i+xstart];
 						}
 					}
 				}
-				output[oi][oj][ok] = sum;
+				output[ok][oj][oi] = sum;
 			}
 		}
 	}
@@ -59,7 +83,7 @@ int main() {
 	for (int k = 0; k < f; k++) {
 		for (int j = 0; j < ox; j++) {
 			for (int i = 0; i < oy; i++) {
-				printf("%d ", output[i][j][k]);
+				printf("%d ", output[k][j][i]);
 			}
 			printf("\n");
 		}
