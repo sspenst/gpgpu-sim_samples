@@ -1,4 +1,4 @@
-OBJS = dmdv dmsv smsv sst_simple stripes
+OBJS = bsmad_simple dmdv dmsv smsv sst_simple stripes
 
 all: $(OBJS)
 

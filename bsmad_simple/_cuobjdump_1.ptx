@@ -1,0 +1,112 @@
+
+
+
+
+
+
+
+.version 4.3
+.target sm_20
+.address_size 64
+
+
+
+.visible .entry _Z5BSMADPiS_S_(
+.param .u64 _Z5BSMADPiS_S__param_0,
+.param .u64 _Z5BSMADPiS_S__param_1,
+.param .u64 _Z5BSMADPiS_S__param_2
+)
+{
+.local .align 4 .b8 __local_depot0[8];
+.reg .b64 %SP;
+.reg .b64 %SPL;
+.reg .pred %p<2>;
+.reg .b32 %r<33>;
+.reg .b64 %rd<26>;
+
+
+mov.u64 %rd25, __local_depot0;
+cvta.local.u64 %SP, %rd25;
+ld.param.u64 %rd4, [_Z5BSMADPiS_S__param_0];
+ld.param.u64 %rd5, [_Z5BSMADPiS_S__param_1];
+ld.param.u64 %rd6, [_Z5BSMADPiS_S__param_2];
+cvta.to.global.u64 %rd1, %rd6;
+add.u64 %rd7, %SP, 0;
+cvta.to.local.u64 %rd2, %rd7;
+add.u64 %rd8, %SP, 4;
+cvta.to.local.u64 %rd3, %rd8;
+mov.u32 %r10, %tid.x;
+st.local.u32 [%rd2], %r10;
+mov.u32 %r11, 0;
+st.local.u32 [%rd3], %r11;
+
+	/*
+
+	
+	CPTX_BEGIN
+
+	ld.local.u32 %r12, [%rd2];
+shl.b32 %r13, %r12, 2;
+cvta.to.global.u64 %rd9, %rd4;
+mul.wide.s32 %rd10, %r13, 4;
+add.s64 %rd11, %rd9, %rd10;
+ld.global.u32 %r4, [%rd11];
+ld.local.u32 %r14, [%rd2];
+shl.b32 %r15, %r14, 2;
+add.s32 %r16, %r15, 1;
+mul.wide.s32 %rd12, %r16, 4;
+add.s64 %rd13, %rd9, %rd12;
+ld.global.u32 %r5, [%rd13];
+ld.local.u32 %r17, [%rd2];
+shl.b32 %r18, %r17, 2;
+add.s32 %r19, %r18, 2;
+mul.wide.s32 %rd14, %r19, 4;
+add.s64 %rd15, %rd9, %rd14;
+ld.global.u32 %r6, [%rd15];
+ld.local.u32 %r20, [%rd2];
+shl.b32 %r21, %r20, 2;
+add.s32 %r22, %r21, 3;
+mul.wide.s32 %rd16, %r22, 4;
+add.s64 %rd17, %rd9, %rd16;
+ld.global.u32 %r7, [%rd17];
+ld.local.u32 %r23, [%rd2];
+cvta.to.global.u64 %rd18, %rd5;
+mul.wide.s32 %rd19, %r23, 4;
+add.s64 %rd20, %rd18, %rd19;
+ld.global.u32 %r8, [%rd20];
+ld.local.u32 %r24, [%rd2];
+shr.s32 %r25, %r24, 31;
+shr.u32 %r26, %r25, 30;
+add.s32 %r27, %r24, %r26;
+and.b32 %r28, %r27, -4;
+sub.s32 %r29, %r24, %r28;
+mul.wide.s32 %rd21, %r29, 4;
+add.s64 %rd22, %rd1, %rd21;
+ld.global.u32 %r9, [%rd22];
+mov.u32 %r3, 4;
+
+	bsmad.s32 %r1, %r3, %r3, %r4, %r5, %r6, %r7, %r8, %r9;
+
+	st.local.u32 [%rd3], %r1;
+
+	CPTX_END
+
+	
+	*/
+
+	ld.local.u32 %r30, [%rd2];
+setp.gt.s32	%p1, %r30, 3;
+@%p1 bra BB0_2;
+
+ld.local.u32 %r31, [%rd3];
+ld.local.u32 %r32, [%rd2];
+mul.wide.s32 %rd23, %r32, 4;
+add.s64 %rd24, %rd1, %rd23;
+st.global.u32 [%rd24], %r31;
+
+BB0_2:
+ret;
+}
+
+
+

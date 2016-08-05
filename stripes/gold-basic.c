@@ -31,7 +31,7 @@ int main() {
 	int ***output = (int***)malloc(f*sizeof(int**));
 	for (int i = 0; i < f; i++) {
 		output[i] = (int**)malloc(oy*sizeof(int*));
-		for(int y = 0; y < ny; y++) {
+		for (int y = 0; y < oy; y++) {
 			output[i][y] = (int*)malloc(ox*sizeof(int));
 		}
 	}

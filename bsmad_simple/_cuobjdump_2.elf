@@ -1,0 +1,88 @@
+64bit elf: type=2, abi=7, sm=20, toolkit=75, flags = 0x140514
+Sections:
+Index Offset   Size ES Align   Type   Flags Link     Info Name
+    1     40     96  0  1    STRTAB       0    0        0 .shstrtab
+    2     d6     ac  0  1    STRTAB       0    0        0 .strtab
+    3    188     60 18  8    SYMTAB       0    2        2 .symtab
+    4    1e8     24  0  4 CUDA_INFO       0    3        0 .nv.info
+    5    20c     48  0  4 CUDA_INFO       0    3        7 .nv.info._Z5BSMADPiS_S_
+    6    254     38  0  4  PROGBITS       2    0        7 .nv.constant0._Z5BSMADPiS_S_
+    7    28c     98  0  4  PROGBITS       6    3  8000003 .text._Z5BSMADPiS_S_
+
+.section .strtab
+
+.section .shstrtab
+
+.section .symtab
+ index           value           size      info    other  shndx    name  
+   0               0               0        0        0      0     (null)
+   1               0               0        3        0      7     .text._Z5BSMADPiS_S_
+   2               0               0        3        0      6     .nv.constant0._Z5BSMADPiS_S_
+   3               0             152       12       10      7     _Z5BSMADPiS_S_
+
+
+.nv.constant0._Z5BSMADPiS_S_
+0x00000000  0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  0x00000000  0x00000000  0x00000000  
+0x00000000  
+
+
+.nv.info
+	<0x1>
+	Attribute:	EIATTR_MAX_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	0x3 0x0 
+	<0x2>
+	Attribute:	EIATTR_MIN_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	function: _Z5BSMADPiS_S_(0x3)	min stack size: 0x8
+	<0x3>
+	Attribute:	EIATTR_FRAME_SIZE
+	Format:	EIFMT_SVAL
+	Value:	function: _Z5BSMADPiS_S_(0x3)	frame size: 0x8
+
+
+.nv.info._Z5BSMADPiS_S_
+	<0x1>
+	Attribute:	EIATTR_PARAM_CBANK
+	Format:	EIFMT_SVAL
+	Value:	0x2 0x180020 
+	<0x2>
+	Attribute:	EIATTR_CBANK_PARAM_SIZE
+	Format:	EIFMT_HVAL
+	Value:	0x18
+	<0x3>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x2	Offset  : 0x10	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x4>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x1	Offset  : 0x8	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x5>
+	Attribute:	EIATTR_KPARAM_INFO
+	Format:	EIFMT_SVAL
+	Value:	Index : 0x0	Ordinal : 0x0	Offset  : 0x0	Size    : 0x8
+		Pointee's logAlignment : 0x0	Space : 0x0	cbank : 0x1f	Parameter Space : CBANK	
+	<0x6>
+	Attribute:	EIATTR_CRS_STACK_SIZE
+	Format:	EIFMT_SVAL
+	Value:	0xc 
+
+
+.text._Z5BSMADPiS_S_
+bar = 0	reg = 8	lmem=0	smem=0
+0x00005de4  0x28004404  0x20105d03  0x4800c000  
+0x84009c04  0x2c000000  0x10101c43  0x68004000  
+0x10011c03  0x4800c000  0xfc00dc02  0x3803ffff  
+0xfc411c02  0x3803ffff  0x00309c85  0xc8000000  
+0x004fdc85  0xc8000000  0x00301c85  0xc0000000  
+0x0c01dc23  0x1a0ec000  0xc00081e7  0x40000000  
+0x0030a085  0xc0000000  0x1001e1e2  0x18000000  
+0x00402085  0xc0000000  0xc021a0a3  0x200f8000  
+0xd021e0e3  0x208e8000  0x00602085  0x94000000  
+0x00001de7  0x80000000  
+

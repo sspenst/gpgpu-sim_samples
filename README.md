@@ -1,5 +1,8 @@
 # gpgpu-sim_samples
 
+bsmad_simple:
+Basic implementation of the BSMAD instruction.
+
 dmdv:
 Dense matrix times dense vector using the standard ISA.
 
